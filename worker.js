@@ -647,15 +647,15 @@ function _0xQ6e(_0xQ6f) {
 }
 function _0xQ72(_0xQ73) {
     if (_0xQ73.document)
-        return { type: _0xDEC(825), name: _0xQ73.document.file_name, size: _0xQ73.document.file_size };
+        return { type: _0xDEC(825), name: _0xQ73.document.file_name, size: _0xQ73.document.file_size, file_id: _0xQ73.document.file_id };
     if (_0xQ73.video)
-        return { type: _0xDEC(826), name: _0xQ73.video.file_name || _0xDEC(827), size: _0xQ73.video.file_size };
+        return { type: _0xDEC(826), name: _0xQ73.video.file_name || _0xDEC(827), size: _0xQ73.video.file_size, file_id: _0xQ73.video.file_id };
     if (_0xQ73.audio)
-        return { type: _0xDEC(828), name: _0xQ73.audio.file_name || _0xDEC(829), size: _0xQ73.audio.file_size };
+        return { type: _0xDEC(828), name: _0xQ73.audio.file_name || _0xDEC(829), size: _0xQ73.audio.file_size, file_id: _0xQ73.audio.file_id };
     if (_0xQ73.photo)
-        return { type: _0xDEC(830), name: _0xDEC(831), size: _0xQ73.photo.at(-1)?.file_size };
+        return { type: _0xDEC(830), name: _0xDEC(831), size: _0xQ73.photo.at(-1)?.file_size, file_id: _0xQ73.photo.at(-1)?.file_id };
     if (_0xQ73.voice)
-        return { type: _0xDEC(832), name: _0xDEC(833), size: _0xQ73.voice.file_size };
+        return { type: _0xDEC(832), name: _0xDEC(833), size: _0xQ73.voice.file_size, file_id: _0xQ73.voice.file_id };
     return null;
 }
 function _0xQ74(_0xQ75) {
@@ -735,8 +735,9 @@ async function _0xQa0(_0xQa1, _0xQa2, _0xQa3, _0xQa4) {
         return _0xQ14(_0xQa1, _0xQa5, _0xQ6(_0xQa4, _0xDEC(850)));
     const _0xQa9 = _0xQa8.result.message_id;
     const _0xQaa = _0xQ24(8);
-    await _0xQ84(_0xQa1, _0xQaa, {
+        await _0xQ84(_0xQa1, _0xQaa, {
         channel_msg_id: _0xQa9,
+        file_id: _0xQa7.file_id,
         file_type: _0xQa7.type,
         file_name: _0xQa7.name,
         file_size: _0xQa7.size,
@@ -746,8 +747,28 @@ async function _0xQa0(_0xQa1, _0xQa2, _0xQa3, _0xQa4) {
     });
     await _0xQ4b(_0xQa1, _0xDEC(851));
     await _0xQ4b(_0xQa1, _0xDEC(852));
+
     const _0xQab = `https://t.me/${_0xQa2.bot_username}?start=${_0xQaa}`;
-    await _0xQ14(_0xQa1, _0xQa5, `${_0xQ6(_0xQa4, _0xDEC(853))}\n\n📄 <b>${_0xQa7.name}</b>\n📦 ${_0xQ74(_0xQa7.size)}\n🔗 <code>${_0xQaa}</code>\n\n${_0xQab}`, { reply_markup: { inline_keyboard: [[{ text: _0xQ6(_0xQa4, _0xDEC(854)), switch_inline_query: _0xQaa }]] } });
+    const _0xExt = `${_0xBASE}/dl/${_0xQaa}`;
+
+    await _0xQ14(
+        _0xQa1,
+        _0xQa5,
+        `${_0xQ6(_0xQa4, _0xDEC(853))}\n\n` +
+        `📄 <b>${_0xQa7.name}</b>\n` +
+        `📦 ${_0xQ74(_0xQa7.size)}\n` +
+        `🔗 <code>${_0xQaa}</code>\n\n` +
+        `🌐 <b>لینک دانلود مستقیم:</b>\n<code>${_0xExt}</code>\n\n` +
+        `📱 ${_0xQab}`,
+        {
+            reply_markup: {
+                inline_keyboard: [
+                    [{ text: "🌐 دانلود مستقیم (IDM)", url: _0xExt }],
+                    [{ text: _0xQ6(_0xQa4, _0xDEC(854)), switch_inline_query: _0xQaa }]
+                ]
+            }
+        }
+    );
 }
 async function _0xQac(_0xQad, _0xQae, _0xQaf, _0xQb0) {
     await _0xQ2a(_0xQb0 * 1000);
@@ -1131,9 +1152,92 @@ async function _0xQ121(_0xQ122, _0xQ123, _0xQ124, _0xQ125) {
     _0xQ124.from.lang = _0xQ125;
     return _0xQd8(_0xQ122, _0xQ123, _0xQ124);
 }
+let _0xBASE = "";
+
+async function _0xQDOWNLOAD(_env, _code) {
+    try {
+        if (!_code) return new Response("Missing code", { status: 400 });
+
+        const _file = await _0xQ81(_env, _code);
+        if (!_file) return new Response("File not found", { status: 404 });
+
+        const _cfg = await _0xQ2d(_env);
+        if (!_cfg.storage_channel) {
+            return new Response("Storage channel not configured", { status: 500 });
+        }
+
+        let _fileId = _file.file_id;
+
+        if (!_fileId) {
+            const _fwd = await _0xQe(_env, "forwardMessage", {
+                chat_id: _env.OWNER_ID,
+                from_chat_id: _cfg.storage_channel.id,
+                message_id: _file.channel_msg_id
+            });
+            if (!_fwd.ok) {
+                return new Response("Failed to fetch file from Telegram", { status: 500 });
+            }
+
+            const _msg = _fwd.result;
+            _fileId = (_msg.document && _msg.document.file_id)
+                || (_msg.video && _msg.video.file_id)
+                || (_msg.audio && _msg.audio.file_id)
+                || (_msg.voice && _msg.voice.file_id)
+                || (_msg.photo && _msg.photo.length && _msg.photo[_msg.photo.length - 1].file_id);
+
+            await _0xQe(_env, "deleteMessage", {
+                chat_id: _env.OWNER_ID,
+                message_id: _msg.message_id
+            }).catch(function () {});
+
+            if (_fileId) {
+                await _env.DB.prepare("UPDATE files SET file_id = ? WHERE code = ?")
+                    .bind(_fileId, _code).run();
+            }
+        }
+
+        if (!_fileId) return new Response("File ID unavailable", { status: 500 });
+
+        const _gf = await _0xQe(_env, "getFile", { file_id: _fileId });
+        if (!_gf.ok) return new Response("Failed to get file info", { status: 500 });
+
+        const _tgUrl = `https://api.telegram.org/file/bot${_env.BOT_TOKEN}/${_gf.result.file_path}`;
+        const _resp = await fetch(_tgUrl);
+        if (!_resp.ok) return new Response("Failed to download file", { status: 502 });
+
+        await _0xQ88(_env, _code).catch(function () {});
+        await _0xQ4b(_env, _0xDEC(859), 1).catch(function () {});
+
+        const _headers = new Headers();
+        _headers.set("Content-Type", _resp.headers.get("content-type") || "application/octet-stream");
+
+        const _fn = _file.file_name || "file";
+        const _safeName = _fn.replace(/["\r\n]/g, "_");
+        _headers.set(
+            "Content-Disposition",
+            `attachment; filename="${_safeName}"; filename*=UTF-8''${encodeURIComponent(_fn)}`
+        );
+        if (_file.file_size) _headers.set("Content-Length", String(_file.file_size));
+        _headers.set("Cache-Control", "public, max-age=3600");
+        _headers.set("Access-Control-Allow-Origin", "*");
+
+        return new Response(_resp.body, { status: 200, headers: _headers });
+    } catch (e) {
+        console.log("Download error:", e.message);
+        return new Response("Internal error: " + e.message, { status: 500 });
+    }
+}
+
 export default {
     async fetch(_0xQ126, _0xQ127, _0xQ128) {
         const _0xQ129 = new URL(_0xQ126.url);
+        _0xBASE = `${_0xQ129.protocol}//${_0xQ129.host}`;
+
+        if (_0xQ126.method === "GET" && _0xQ129.pathname.startsWith("/dl/")) {
+            const _code = decodeURIComponent(_0xQ129.pathname.slice(4));
+            return await _0xQDOWNLOAD(_0xQ127, _code);
+        }
+
         if (_0xQ126.method === _0xDEC(792) && _0xQ129.pathname === `/webhook/${_0xQ127.WEBHOOK_SECRET}`) {
             try {
                 const _0xQ12a = await _0xQ126.json();
@@ -1150,5 +1254,5 @@ export default {
             return new Response(_0xDEC(990));
         }
         return new Response(_0xDEC(991), { status: 200 });
-    },
+    }
 };
